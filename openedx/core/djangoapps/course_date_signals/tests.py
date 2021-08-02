@@ -3,6 +3,9 @@ from datetime import timedelta
 from unittest.mock import patch  # lint-amnesty, pylint: disable=wrong-import-order
 
 from cms.djangoapps.contentstore.config.waffle import CUSTOM_RELATIVE_DATES
+from django.conf import UserSettingsHolder, settings
+from django.test.utils import TestContextDecorator
+from functools import wraps
 from edx_toggles.toggles.testutils import override_waffle_flag
 from openedx.core.djangoapps.course_date_signals.handlers import (
     _gather_graded_items,
@@ -14,7 +17,9 @@ from openedx.core.djangoapps.course_date_signals.models import SelfPacedRelative
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
 from . import utils
-
+from waffle.testutils import override_flag
+from waffle.models import Flag
+from waffle import get_waffle_flag_model
 
 class SelfPacedDueDatesTests(ModuleStoreTestCase):  # lint-amnesty, pylint: disable=missing-class-docstring
     def setUp(self):
@@ -194,19 +199,34 @@ class SelfPacedDueDatesTests(ModuleStoreTestCase):  # lint-amnesty, pylint: disa
             expected_dates.append((problem3.location, {'due': timedelta(weeks=2)}))
             sequence = self.store.get_item(sequence.location)
             self.assertCountEqual(_get_custom_pacing_children(sequence, 2), expected_dates)
+class override_waffle_flag_class(TestContextDecorator):
+    # cls = get_waffle_flag_model()
+    def __init__(self, name, active):
+        super(override_waffle_flag_class, self).__init__()
+        self.name = name
+        self.active = active
+        self.cls = get_waffle_flag_model()
 
+    def enable(self):
+        print("ENABLED!")
 
+    def disable(self):
+        print("DISABLED!")
+
+@override_waffle_flag_class(CUSTOM_RELATIVE_DATES, active=True)
 class SelfPacedCustomDueDateTests(ModuleStoreTestCase):
     """
     Tests the custom Personalized Learner Schedule (PLS) dates in self paced courses
     """
+
+    #@override_waffle_flag(CUSTOM_RELATIVE_DATES, active=True)
     def setUp(self):
         super().setUp()
         SelfPacedRelativeDatesConfig.objects.create(enabled=True)
         self.course = CourseFactory.create(self_paced=True)
         self.chapter = ItemFactory.create(category='chapter', parent=self.course)
 
-    @override_waffle_flag(CUSTOM_RELATIVE_DATES, active=True)
+    #@override_flag(CUSTOM_RELATIVE_DATES, active=True)
     def test_extract_dates_from_course_inheritance(self):
         """
         extract_dates_from_course should return a list of (block item location, field metadata dictionary)
@@ -225,9 +245,10 @@ class SelfPacedCustomDueDateTests(ModuleStoreTestCase):
                 (problem.location, {'due': timedelta(days=21)})
             ]
         course = self.store.get_item(self.course.location)
+        print("Testing test 1....")
         self.assertCountEqual(extract_dates_from_course(course), expected_dates)
 
-    @override_waffle_flag(CUSTOM_RELATIVE_DATES, active=True)
+    #@override_flag(CUSTOM_RELATIVE_DATES, active=True)
     def test_extract_dates_from_course_custom_and_default_pls_one_subsection(self):
         """
         relative_weeks_due in one of the subsections. Only one of them should have a set due date.
@@ -246,9 +267,10 @@ class SelfPacedCustomDueDateTests(ModuleStoreTestCase):
                 (sequential.location, {'due': timedelta(days=21)})
             ]
         course = self.store.get_item(self.course.location)
+        print("Testing test 2....")
         self.assertCountEqual(extract_dates_from_course(course), expected_dates)
 
-    @override_waffle_flag(CUSTOM_RELATIVE_DATES, active=True)
+    #@override_waffle_flag(CUSTOM_RELATIVE_DATES, active=True)
     def test_extract_dates_from_course_custom_and_default_pls_one_subsection_graded(self):
         """
         A section with a subsection that has relative_weeks_due and
@@ -280,9 +302,10 @@ class SelfPacedCustomDueDateTests(ModuleStoreTestCase):
             ]
         course = self.store.get_item(self.course.location)
         with patch.object(utils, 'get_expected_duration', return_value=timedelta(weeks=6)):
+            print("Testing test 3....")
             self.assertCountEqual(extract_dates_from_course(course), expected_dates)
 
-    @override_waffle_flag(CUSTOM_RELATIVE_DATES, active=True)
+    #@override_waffle_flag(CUSTOM_RELATIVE_DATES, active=True)
     def test_extract_dates_from_course_custom_and_default_pls_multiple_subsections_graded(self):
         """
         A section with a subsection that has relative_weeks_due and multiple sections without
@@ -318,9 +341,10 @@ class SelfPacedCustomDueDateTests(ModuleStoreTestCase):
                 ])
         course = self.store.get_item(self.course.location)
         with patch.object(utils, 'get_expected_duration', return_value=timedelta(weeks=8)):
+            print("Testing test 4....")
             self.assertCountEqual(extract_dates_from_course(course), expected_dates)
 
-    @override_waffle_flag(CUSTOM_RELATIVE_DATES, active=True)
+    #@override_waffle_flag(CUSTOM_RELATIVE_DATES, active=True)
     def test_extract_dates_from_course_all_subsections(self):
         """
         With relative_weeks_due on all subsections. All subsections should
@@ -338,9 +362,10 @@ class SelfPacedCustomDueDateTests(ModuleStoreTestCase):
                 (sequential3.location, {'due': timedelta(days=35)})
             ]
         course = self.store.get_item(self.course.location)
+        print("Testing test 5....")
         self.assertCountEqual(extract_dates_from_course(course), expected_dates)
 
-    @override_waffle_flag(CUSTOM_RELATIVE_DATES, active=True)
+    #@override_waffle_flag(CUSTOM_RELATIVE_DATES, active=True)
     def test_extract_dates_from_course_no_subsections(self):
         """
         Without relative_weeks_due on all subsections. None of the subsections should
@@ -351,4 +376,5 @@ class SelfPacedCustomDueDateTests(ModuleStoreTestCase):
                 ItemFactory.create(category='sequential', parent=self.chapter)
             expected_dates = [(self.course.location, {})]
         course = self.store.get_item(self.course.location)
+        print("Testing test 6....")
         self.assertCountEqual(extract_dates_from_course(course), expected_dates)
