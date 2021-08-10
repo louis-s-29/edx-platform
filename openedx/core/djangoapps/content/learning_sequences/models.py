@@ -113,6 +113,10 @@ class LearningSequence(TimeStampedModel):
     )
     usage_key = UsageKeyField(max_length=255)
 
+    # URLsafe-base64-encoded blake2b hash of this sequence's usage key, for use
+    # in situations where a shorter usage identifier is desired, such as URLs.
+    usage_key_hash = CharField(max_length=255, unique=True)
+
     # Yes, it's crazy to have a title 1K chars long. But we have ones at least
     # 270 long, meaning we wouldn't be able to make it indexed anyway in InnoDB.
     title = models.CharField(max_length=1000)
@@ -122,6 +126,31 @@ class LearningSequence(TimeStampedModel):
         unique_together = [
             ['learning_context', 'usage_key'],
         ]
+
+
+class LearningUnit(TimeStampedModel):
+    """
+    Eventually, this model will be used to incorporate the Unit into the
+    Outlines API, perhaps including metadata relevant to Unit navigation
+    such as title and visibility.
+
+    For now, though, this model exists solely to enable a reverse mapping
+    from encoded Unit usage_key_hases back to their original usage_keys.
+
+    Eventually, it will be okay to make a foreign key against this table,
+    but it would be best to consider this model "unstable" until it is used
+    in the Outlines API.
+    """
+    id = models.BigAutoField(primary_key=True)
+    learning_sequence = models.ForeignKey(
+        LearningContext, on_delete=models.CASCADE, related_name='sequences'
+    )
+
+    usage_key = UsageKeyField(max_length=255, unique=True)
+
+    # URLsafe-base64-encoded hash of the unit's usage key, for use
+    # in situations where a shorter usage identifier is desired, such as URLs.
+    usage_key_hash = CharField(max_length=255, unique=True)
 
 
 class CourseContentVisibilityMixin(models.Model):
