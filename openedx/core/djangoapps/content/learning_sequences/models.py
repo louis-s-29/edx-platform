@@ -113,6 +113,10 @@ class LearningSequence(TimeStampedModel):
     )
     usage_key = UsageKeyField(max_length=255)
 
+    # A URL-safe Base64-encoding of a blake2b hash of the usage key.
+    # For aesthetic use (eg, as a path parameter, to shorten URLs).
+    usage_key_hash = models.CharField(max_length=255)
+
     # Yes, it's crazy to have a title 1K chars long. But we have ones at least
     # 270 long, meaning we wouldn't be able to make it indexed anyway in InnoDB.
     title = models.CharField(max_length=1000)
@@ -121,6 +125,7 @@ class LearningSequence(TimeStampedModel):
     class Meta:
         unique_together = [
             ['learning_context', 'usage_key'],
+            ['learning_context', 'usage_key_hash'],
         ]
 
 

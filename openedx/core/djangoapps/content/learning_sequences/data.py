@@ -116,17 +116,23 @@ def user_partition_groups_not_empty(instance, attribute, value):  # pylint: disa
 
 
 @attr.s(frozen=True)
-class CourseLearningSequenceData:
+class LearningSequenceData:
     """
-    A Learning Sequence (a.k.a. subsection) from a Course.
+    A generic, context-agnostic Learning Sequence.
 
-    It's possible that at some point we'll want a LearningSequenceData
-    superclass to encapsulate the minimum set of data that is shared between
-    learning sequences in Courses vs. Pathways vs. Libraries. Such an object
-    would likely not have `visibility` as that holds course-specific concepts.
+    This class does not contain any context-specific (that is, Course-specific,
+    Pathway-specific, etc) data.
     """
     usage_key = attr.ib(type=UsageKey)
+    usage_key_hash = attr.ib(type=str)
     title = attr.ib(type=str)
+
+
+@attr.s(frozen=True)
+class CourseLearningSequenceData(LearningSequenceData):
+    """
+    A Learning Sequence (a.k.a. subsection) from a Course.
+    """
     visibility = attr.ib(type=VisibilityData, default=VisibilityData())
     exam = attr.ib(type=ExamData, default=ExamData())
     inaccessible_after_due = attr.ib(type=bool, default=False)

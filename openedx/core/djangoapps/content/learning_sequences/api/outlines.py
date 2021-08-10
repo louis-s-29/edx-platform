@@ -16,6 +16,7 @@ from opaque_keys import OpaqueKey
 from opaque_keys.edx.keys import CourseKey
 from opaque_keys.edx.locator import LibraryLocator
 from openedx.core import types
+from openedx.core.lib.hash_utils import hash_usage_key
 
 from ..data import (
     ContentErrorData,
@@ -490,7 +491,10 @@ def _update_sequences(course_outline: CourseOutlineData, course_context: CourseC
             LearningSequence.objects.update_or_create(
                 learning_context=course_context.learning_context,
                 usage_key=sequence_data.usage_key,
-                defaults={'title': sequence_data.title}
+                defaults={
+                    'usage_key_hash': hash_usage_key(sequence_data.usage_key),
+                    'title': sequence_data.title,
+                }
             )
     LearningSequence.objects \
         .filter(learning_context=course_context.learning_context) \
