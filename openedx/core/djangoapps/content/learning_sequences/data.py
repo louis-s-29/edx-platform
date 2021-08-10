@@ -131,10 +131,6 @@ class CourseLearningSequenceData:
     exam = attr.ib(type=ExamData, default=ExamData())
     inaccessible_after_due = attr.ib(type=bool, default=False)
 
-    # URLsafe-base64-encoded hash of this sequence's usage key, for use
-    # in situations where a shorter usage identifier is desired, such as URLs.
-    usage_key_hash = attr.ib(type=str)
-
     # Mapping of UserPartition IDs to list of UserPartition Groups that are
     # associated with this piece of content. See models.UserPartitionGroup
     # for more details.
@@ -143,27 +139,6 @@ class CourseLearningSequenceData:
         factory=dict,
         validator=[user_partition_groups_not_empty],
     )
-
-    # Reverse mapping from hashed usage keys back to the original usage keys
-    # that make up all the units in this sequence.
-    # This exists as a protected field, exposed by `recover_usage_key_from_hash`,
-    # because we do not want to encourage clients of this API to use
-    # this dictionary as an enumeration of the units that exist in a sequence.
-    # That API *is* planned for learning_sequences, but this is not it.
-    _unit_usage_keys_by_hash = attr.ib(
-        type=Dict[str, UsageKey],
-        factory=dict,
-    )
-
-    def recover_usage_key_from_hash(self, usage_key_hash: str) -> UsageKey:
-        """
-        Given the URLsafe-base64-encoded hash of a usage key of a unit in this
-        sequence, return the original unit usage key.
-
-        Raises a `KeyError` if no such `usage_key_hash` exists amongst this
-        sequence's units.
-        """
-        return self._unit_usage_keys_by_hash[usage_key_hash]
 
 
 @attr.s(frozen=True)
