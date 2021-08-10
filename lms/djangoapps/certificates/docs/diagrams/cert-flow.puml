@@ -1,0 +1,67 @@
+@startuml
+skinparam BoxPadding 10
+
+title Protecting course certificates user flow
+header Project: decide when a user can get a cert, implement, then protect the cert (ensure the cert is only revoked in a very few specific instances)
+
+actor Learner as learner
+actor "edX Support Rep" as support
+
+box "Other code in edx-platform"
+    participant "Enrollment\nand other courseware" as enrollment
+    participant "Grades app" as grade
+    participant "ID verification app" as id
+end box
+
+box "Course certificates\ndjangoapp"
+    participant "Certs code" as certs
+    database "GeneratedCertificate\ntable in the LMS database" as certs_db
+    database "CertificateAllowlist\ntable in the LMS database" as allow_db
+    database "CertificateInvalidation\ntable in the LMS database" as invalid_db
+end box
+
+==Passing grade==
+learner -> enrollment:Learner enrolls in\na paid course track
+
+enrollment -> enrollment: Learner completes course
+
+enrollment -> grade: Learner receives\na passing grade
+
+grade -> certs: Grade signal sent
+
+
+certs -> certs: Cert eligibility checked.\nNot yet eligible.
+
+learner -> id: Learner verifies their identity\n(timing of this could vary)
+
+id -> certs: Id signal sent
+
+certs -> certs: Cert eligibility checked
+
+certs -> certs_db: Since all cert requirements\nhave been met, a cert is generated
+
+==Failing grade but allowlisted==
+learner -> enrollment: Learner enrolls in\na paid course track\nof a different course
+
+enrollment -> enrollment: Learner completes course
+
+enrollment -> grade: Learner receives\na failing grade
+
+support -> certs: Support adds user to the Certificate Allowlist\n(formerly the Whitelist),\noverriding the need for a passing grade
+certs -> allow_db
+
+allow_db -> certs: Allowlist signal sent
+
+certs -> certs: Cert eligibility checked
+
+certs -> certs_db: Since all cert requirements\nhave been met, a cert is generated
+
+==Cert is invalidated==
+learner -> certs_db: Learner already has a course certificated
+
+support -> certs: Support adds user to the Certificate Invalidation list\ndue to the course team suspecting cheating
+certs -> invalid_db
+
+certs -> certs_db: Cert is revoked
+
+@enduml
