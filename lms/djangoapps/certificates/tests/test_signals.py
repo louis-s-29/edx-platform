@@ -12,6 +12,7 @@ from edx_toggles.toggles.testutils import override_waffle_flag, override_waffle_
 
 from common.djangoapps.student.tests.factories import CourseEnrollmentFactory, UserFactory
 from lms.djangoapps.certificates.api import has_self_generated_certificates_enabled
+from lms.djangoapps.certificates.config import AUTO_CERTIFICATE_GENERATION
 from lms.djangoapps.certificates.data import CertificateStatuses
 from lms.djangoapps.certificates.models import (
     CertificateGenerationConfiguration,
@@ -21,11 +22,8 @@ from lms.djangoapps.certificates.tests.factories import CertificateAllowlistFact
 from lms.djangoapps.grades.course_grade_factory import CourseGradeFactory
 from lms.djangoapps.grades.tests.utils import mock_passing_grade
 from lms.djangoapps.verify_student.models import SoftwareSecurePhotoVerification
-from openedx.core.djangoapps.certificates.config import waffle
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
 from xmodule.modulestore.tests.factories import CourseFactory
-
-AUTO_CERTIFICATE_GENERATION_SWITCH = LegacyWaffleSwitch(waffle.waffle(), waffle.AUTO_CERTIFICATE_GENERATION)  # lint-amnesty, pylint: disable=toggle-missing-annotation
 
 
 class SelfGeneratedCertsSignalTest(ModuleStoreTestCase):

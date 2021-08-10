@@ -23,7 +23,6 @@ from common.djangoapps.course_modes.tests.factories import CourseModeFactory
 from common.djangoapps.student.tests.factories import UserFactory
 from lms.djangoapps.certificates.tests.factories import GeneratedCertificateFactory
 from openedx.core.djangoapps.catalog.tests.mixins import CatalogIntegrationMixin
-from openedx.core.djangoapps.certificates.config import waffle
 from openedx.core.djangoapps.content.course_overviews.tests.factories import CourseOverviewFactory
 from openedx.core.djangoapps.credentials.tests.mixins import CredentialsApiConfigMixin
 from openedx.core.djangoapps.oauth_dispatch.tests.factories import ApplicationFactory
@@ -506,9 +505,9 @@ class PostCourseCertificateTestCase(TestCase):
 
 @skip_unless_lms
 @ddt.ddt
+@mock.patch("lms.djangoapps.certificates.api.auto_certificate_generation_enabled")
 @mock.patch(TASKS_MODULE + '.post_course_certificate')
 @override_settings(CREDENTIALS_SERVICE_USERNAME='test-service-username')
-@override_switch(waffle.WAFFLE_NAMESPACE + '.' + waffle.AUTO_CERTIFICATE_GENERATION, True)
 class AwardCourseCertificatesTestCase(CredentialsApiConfigMixin, TestCase):
     """
     Test the award_course_certificate celery task
@@ -542,10 +541,11 @@ class AwardCourseCertificatesTestCase(CredentialsApiConfigMixin, TestCase):
         'verified',
         'no-id-professional',
     )
-    def test_award_course_certificates(self, mode, mock_post_course_certificate):
+    def test_award_course_certificates(self, mode, mock_post_course_certificate, mock_cert_generation_enabled):
         """
         Tests the API POST method is called with appropriate params when configured properly
         """
+        mock_cert_generation_enabled.return_value = True
         self.certificate.mode = mode
         self.certificate.save()
         tasks.award_course_certificate.delay(self.student.username, str(self.course.id)).get()
@@ -554,10 +554,11 @@ class AwardCourseCertificatesTestCase(CredentialsApiConfigMixin, TestCase):
         assert call_args[2] == self.certificate
         assert call_args[3] == self.certificate.modified_date
 
-    def test_award_course_certificates_available_date(self, mock_post_course_certificate):
+    def test_award_course_certificates_available_date(self, mock_post_course_certificate, mock_cert_generation_enabled):
         """
         Tests the API POST method is called with available date when the course is not self paced
         """
+        mock_cert_generation_enabled.return_value = True
         self.course.self_paced = False
         self.course.save()
         tasks.award_course_certificate.delay(self.student.username, str(self.course.id)).get()
@@ -566,10 +567,12 @@ class AwardCourseCertificatesTestCase(CredentialsApiConfigMixin, TestCase):
         assert call_args[2] == self.certificate
         assert call_args[3] == self.available_date
 
-    def test_award_course_cert_not_called_if_disabled(self, mock_post_course_certificate):
+    def test_award_course_cert_not_called_if_disabled(self, mock_post_course_certificate, mock_cert_generation_enabled):
         """
         Test that the post method is never called if the config is disabled
         """
+        mock_cert_generation_enabled.return_value = True
+
         self.create_credentials_config(enabled=False)
         with mock.patch(TASKS_MODULE + '.LOGGER.warning') as mock_warning:
             with pytest.raises(MaxRetriesExceededError):
@@ -577,30 +580,36 @@ class AwardCourseCertificatesTestCase(CredentialsApiConfigMixin, TestCase):
         assert mock_warning.called
         assert not mock_post_course_certificate.called
 
-    def test_award_course_cert_not_called_if_user_not_found(self, mock_post_course_certificate):
+    def test_award_course_cert_not_called_if_user_not_found(self, mock_post_course_certificate, mock_cert_generation_enabled):
         """
         Test that the post method is never called if the user isn't found by username
         """
+        mock_cert_generation_enabled.return_value = True
+
         with mock.patch(TASKS_MODULE + '.LOGGER.exception') as mock_exception:
             # Use a random username here since this user won't be found in the DB
             tasks.award_course_certificate.delay('random_username', str(self.course.id)).get()
         assert mock_exception.called
         assert not mock_post_course_certificate.called
 
-    def test_award_course_cert_not_called_if_certificate_not_found(self, mock_post_course_certificate):
+    def test_award_course_cert_not_called_if_certificate_not_found(self, mock_post_course_certificate, mock_cert_generation_enabled):
         """
         Test that the post method is never called if the certificate doesn't exist for the user and course
         """
+        mock_cert_generation_enabled.return_value = True
+
         self.certificate.delete()
         with mock.patch(TASKS_MODULE + '.LOGGER.exception') as mock_exception:
             tasks.award_course_certificate.delay(self.student.username, str(self.course.id)).get()
         assert mock_exception.called
         assert not mock_post_course_certificate.called
 
-    def test_award_course_cert_not_called_if_course_overview_not_found(self, mock_post_course_certificate):
+    def test_award_course_cert_not_called_if_course_overview_not_found(self, mock_post_course_certificate, mock_cert_generation_enabled):
         """
         Test that the post method is never called if the CourseOverview isn't found
         """
+        mock_cert_generation_enabled.return_value = True
+
         self.course.delete()
         with mock.patch(TASKS_MODULE + '.LOGGER.exception') as mock_exception:
             # Use the certificate course id here since the course will be deleted
@@ -608,10 +617,12 @@ class AwardCourseCertificatesTestCase(CredentialsApiConfigMixin, TestCase):
         assert mock_exception.called
         assert not mock_post_course_certificate.called
 
-    def test_award_course_cert_not_called_if_certificated_not_verified_mode(self, mock_post_course_certificate):
+    def test_award_course_cert_not_called_if_certificated_not_verified_mode(self, mock_post_course_certificate, mock_cert_generation_enabled):
         """
         Test that the post method is never called if the GeneratedCertificate is an 'audit' cert
         """
+        mock_cert_generation_enabled.return_value = True
+
         # Temporarily disable the config so the signal isn't handled from .save
         self.create_credentials_config(enabled=False)
         self.certificate.mode = 'audit'
