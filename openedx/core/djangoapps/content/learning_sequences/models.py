@@ -131,8 +131,8 @@ class LearningSequence(TimeStampedModel):
 class LearningUnit(TimeStampedModel):
     """
     Eventually, this model will be used to incorporate the Unit into the
-    Outlines API, likely including a foriegn key to LearningSequence and
-    as well as metadata relevant to Unit navigation, such as title and visibility.
+    Outlines API, perhaps including metadata relevant to Unit navigation
+    such as title and visibility.
 
     For now, though, this model exists solely to enable a reverse mapping
     from encoded Unit usage_key_hases back to their original usage_keys.
@@ -142,8 +142,8 @@ class LearningUnit(TimeStampedModel):
     in the Outlines API.
     """
     id = models.BigAutoField(primary_key=True)
-    learning_context = models.ForeignKey(
-        LearningContext, on_delete=models.CASCADE, related_name='units'
+    learning_sequence = models.ForeignKey(
+        LearningContext, on_delete=models.CASCADE, related_name='sequences'
     )
 
     usage_key = UsageKeyField(max_length=255, unique=True)

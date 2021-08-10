@@ -165,7 +165,6 @@ def get_course_outline(course_key: CourseKey) -> CourseOutlineData:
 
         sequence_data = CourseLearningSequenceData(
             usage_key=sequence_model.usage_key,
-            usage_key_hash=sequence_model.usage_key_hash,
             title=sequence_model.title,
             inaccessible_after_due=sec_seq_model.inaccessible_after_due,
             visibility=VisibilityData(
@@ -491,31 +490,11 @@ def _update_sequences(course_outline: CourseOutlineData, course_context: CourseC
             LearningSequence.objects.update_or_create(
                 learning_context=course_context.learning_context,
                 usage_key=sequence_data.usage_key,
-                defaults={
-                    'title': sequence_data.title,
-                    'usage_key_hash': sequence_data.usage_key_hash,
-                },
+                defaults={'title': sequence_data.title}
             )
     LearningSequence.objects \
         .filter(learning_context=course_context.learning_context) \
         .exclude(usage_key__in=course_outline.sequences) \
-        .delete()
-
-
-def _update_units(course_outline: CourseOutlineData, course_context: CourseContext):
-    """
-    Add/Update relevant units
-    """
-    for unit_key_hash, unit_key in course_outline.unit_hashes_to_keys:
-        LearningUnit.objects.update_or_create(
-            learning_context=course_context.learning_context,
-            usage_key=unit_key,
-            usage_key_hash=unit_key_hash,
-        )
-    all_unit_keys = set(course_outline.unit_hashes_to_keys.values())
-    LearningUnit.objects \
-        .filter(learning_context=course_context.learning_context) \
-        .exclude(usage_key__in=all_unit_keys) \
         .delete()
 
 

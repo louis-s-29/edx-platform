@@ -270,11 +270,9 @@ def _make_section_data(section, unique_sequences):
         if error:
             section_errors.append(error)
 
-        units = sequence.get_children()
-
         # Bubble up User Partition Group settings from Units if appropriate.
         sequence_upg_from_units = _bubbled_up_groups_from_units(
-            [unit.group_access for unit in units]
+            [unit.group_access for unit in sequence.get_children()]
         )
         for user_partition_id, group_ids in sequence_upg_from_units.items():
             # If there's an existing user partition ID set at the sequence
@@ -293,15 +291,9 @@ def _make_section_data(section, unique_sequences):
                     )
                 )
 
-        unit_usage_keys_by_hash = {
-            _hash_and_encode_usage_key(unit.location): unit.location
-            for unit in units
-        }
-
         sequences_data.append(
             CourseLearningSequenceData(
                 usage_key=_remove_version_info(sequence.location),
-                usage_key_hash=_hash_and_encode_usage_key(usage_key),
                 title=sequence.display_name_with_default,
                 inaccessible_after_due=sequence.hide_after_due,
                 exam=ExamData(
@@ -314,7 +306,6 @@ def _make_section_data(section, unique_sequences):
                     visible_to_staff_only=sequence.visible_to_staff_only,
                 ),
                 user_partition_groups=seq_user_partition_groups,
-                unit_usage_keys_by_hash=unit_usage_keys_by_hash,
             )
         )
 
@@ -394,10 +385,3 @@ def update_outline_from_modulestore(course_key):
     set_custom_attribute('num_content_errors', len(content_errors))
 
     replace_course_outline(course_outline_data, content_errors=content_errors)
-
-
-def _hash_and_encode_usage_key(usage_key: UsageKey) -> str:
-    """
-    TODO
-    """
-    raise NotImplementedError

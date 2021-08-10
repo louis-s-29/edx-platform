@@ -144,6 +144,27 @@ class CourseLearningSequenceData:
         validator=[user_partition_groups_not_empty],
     )
 
+    # Reverse mapping from hashed usage keys back to the original usage keys
+    # that make up all the units in this sequence.
+    # This exists as a protected field, exposed by `recover_usage_key_from_hash`,
+    # because we do not want to encourage clients of this API to use
+    # this dictionary as an enumeration of the units that exist in a sequence.
+    # That API *is* planned for learning_sequences, but this is not it.
+    _unit_usage_keys_by_hash = attr.ib(
+        type=Dict[str, UsageKey],
+        factory=dict,
+    )
+
+    def recover_usage_key_from_hash(self, usage_key_hash: str) -> UsageKey:
+        """
+        Given the URLsafe-base64-encoded hash of a usage key of a unit in this
+        sequence, return the original unit usage key.
+
+        Raises a `KeyError` if no such `usage_key_hash` exists amongst this
+        sequence's units.
+        """
+        return self._unit_usage_keys_by_hash[usage_key_hash]
+
 
 @attr.s(frozen=True)
 class CourseSectionData:
@@ -218,17 +239,6 @@ class CourseOutlineData:
 
     # Entrance Exam ID
     entrance_exam_id = attr.ib(type=str)
-
-    # Reverse mapping from hashed usage keys back to the original usage keys
-    # for sequences and units that exist in this course.
-    # WARNING: this is NOT an enumeration of the sequences and units that
-    # exist in the outline!! If this is a UserCourseOutlineData, then these
-    # dicts likely contain hashes of sequences and/or units that are NOT
-    # visible or knowable to the user.
-    # The only valid use of these fields are to recover sequence or unit
-    # usage_keys from their hashed representations.
-    sequence_hashes_to_keys = attr.ib(Dict[str, UsageKey])
-    unit_hashes_to_keys = attr.ib(Dict[str, UsageKey])
 
     def __attrs_post_init__(self):
         """Post-init hook that validates and inits the `sequences` field."""
